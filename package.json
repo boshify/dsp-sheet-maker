@@ -1,0 +1,16 @@
+{
+  "name": "dsp-sheet-maker",
+  "version": "1.0.0",
+  "description": "Backend service to render structured content briefs into Google Sheets for n8n workflows",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "googleapis": "^144.0.0",
+    "pg": "^8.13.1"
+  }
+}
