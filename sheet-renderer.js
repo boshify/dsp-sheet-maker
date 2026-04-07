@@ -449,6 +449,17 @@ function renderTrustBenefits(sheetId, startRow, trust, benefits, pain) {
     out.push(writeCell(sheetId, r, col, val, bodyFmt));
   });
   for (let i = 0; i < 6; i++) out.push(setRowHeight(sheetId, r + i, 35));
+
+  // Thin outer border around each of the 3 box column groups
+  // (label row + 6 body rows). The label row is at r - 1 since we've
+  // already incremented past it.
+  const boxTop = r - 1;
+  const boxHeight = 7; // 1 label row + 6 body rows
+  [2, 4, 6].forEach(col => {
+    out.push(setBorder(sheetId, boxTop, col, boxHeight, 2,
+      'top,bottom,left,right', 'SOLID'));
+  });
+
   return { requests: out, nextRow: r + 6 + 1 };
 }
 
@@ -517,6 +528,7 @@ function renderResourcesTech(sheetId, startRow, meta, tables) {
 function renderSEOTerms(sheetId, startRow, terms) {
   const out = [];
   let r = startRow;
+  const labelRow = r;
 
   // Label row
   out.push(merge(sheetId, r, 2, 1, MAIN_COLS));
@@ -542,7 +554,12 @@ function renderSEOTerms(sheetId, startRow, terms) {
   r++;
 
   const rows = Array.isArray(terms) ? terms : [];
-  if (!rows.length) return { requests: out, nextRow: r + 1 };
+  if (!rows.length) {
+    // Still frame the label + header with a medium outer border
+    out.push(setBorder(sheetId, labelRow, 2, 2, MAIN_COLS,
+      'top,bottom,left,right', 'SOLID_MEDIUM'));
+    return { requests: out, nextRow: r + 1 };
+  }
 
   const bodyStart = r;
   const cellFmtLeft = fmt({
@@ -568,6 +585,16 @@ function renderSEOTerms(sheetId, startRow, terms) {
       adjFmt));
     out.push(setRowHeight(sheetId, r, 28));
   }
+
+  // Thin inner grid across header row + all body rows
+  const gridTop = labelRow + 1;
+  const gridHeight = r - gridTop;
+  out.push(setBorder(sheetId, gridTop, 2, gridHeight, MAIN_COLS,
+    'innerHorizontal,innerVertical', 'SOLID'));
+
+  // Medium outer border around the whole table (label + header + body)
+  out.push(setBorder(sheetId, labelRow, 2, r - labelRow, MAIN_COLS,
+    'top,bottom,left,right', 'SOLID_MEDIUM'));
 
   return { requests: out, nextRow: r + 1 };
 }
