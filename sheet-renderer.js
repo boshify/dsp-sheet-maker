@@ -295,14 +295,10 @@ function renderOverview(sheetId, startRow, meta) {
   const values = [
     [meta.mainKeyword || '', meta.keywordVolume || ''],
     [meta.recommendedUrl || '', meta.minWordCount || ''],
-    [meta.existingOrNew || '', meta.pageType || '']
+    [meta.existingOrNew || '', meta.contentType || meta.pageType || '']
   ];
 
-  // Alt row backgrounds across A..K
-  out.push(repeatFormat(sheetId, r, 1, 1, TOTAL_COLS, { backgroundColor: hexToRgb(C.altLight) }));
-  out.push(repeatFormat(sheetId, r + 1, 1, 1, TOTAL_COLS, { backgroundColor: hexToRgb(C.white) }));
-  out.push(repeatFormat(sheetId, r + 2, 1, 1, TOTAL_COLS, { backgroundColor: hexToRgb(C.altLight) }));
-
+  // No row backgrounds — overview is not considered a table
   const labelFmt = fmt({ fontFamily: FONT_BODY, fontSize: 12, bold: true, color: C.labelGrey, vAlign: 'MIDDLE' });
   const valueFmt = fmt({ fontFamily: FONT_BODY, fontSize: 12, color: C.textDark, vAlign: 'MIDDLE' });
 
@@ -596,6 +592,27 @@ function renderSEOTerms(sheetId, startRow, terms) {
   out.push(setBorder(sheetId, labelRow, 2, r - labelRow, MAIN_COLS,
     'top,bottom,left,right', 'SOLID_MEDIUM'));
 
+  // Conditional formatting on Adj column (G) for body rows:
+  //   "OK"      → green
+  //   positive  → yellow (add)
+  //   negative  → red   (remove)
+  const adjRange = gridRange(sheetId, bodyStart, 7, r - bodyStart, 1);
+  const cfRule = (condition, bg) => ({
+    addConditionalFormatRule: {
+      rule: {
+        ranges: [adjRange],
+        booleanRule: {
+          condition,
+          format: { backgroundColor: hexToRgb(bg) }
+        }
+      },
+      index: 0
+    }
+  });
+  out.push(cfRule({ type: 'TEXT_EQ', values: [{ userEnteredValue: 'OK' }] }, '#B7E1CD')); // green
+  out.push(cfRule({ type: 'NUMBER_GREATER', values: [{ userEnteredValue: '0' }] }, '#FCE8B2')); // yellow
+  out.push(cfRule({ type: 'NUMBER_LESS',    values: [{ userEnteredValue: '0' }] }, '#F4C7C3')); // red
+
   return { requests: out, nextRow: r + 1 };
 }
 
@@ -604,30 +621,27 @@ function renderNotes(sheetId, startRow, notes) {
   const out = [];
   let r = startRow;
   const blocks = [
-    ['Writer Notes:', notes.writerNotes, true],
-    ['Notes for the Uploader:', notes.notesForUploader, false],
-    ['Features, Designs and/or Elements to Include:', notes.otherFeatures, true]
+    ['Writer Notes:', notes.writerNotes],
+    ['Notes for the Uploader:', notes.notesForUploader],
+    ['Features, Designs and/or Elements to Include:', notes.otherFeatures]
   ];
 
-  blocks.forEach(([label, value, lightBg]) => {
-    const bg = lightBg ? C.altLight : C.white;
-    // Label row
-    out.push(repeatFormat(sheetId, r, 1, 1, TOTAL_COLS, { backgroundColor: hexToRgb(bg) }));
+  blocks.forEach(([label, value]) => {
+    // Label row — no background
     out.push(writeCell(sheetId, r, 2, label, fmt({
-      bg, fontFamily: FONT_BODY, fontSize: 11, bold: true, color: C.textDark, vAlign: 'MIDDLE'
+      fontFamily: FONT_BODY, fontSize: 11, bold: true, color: C.textDark, vAlign: 'MIDDLE'
     })));
     out.push(setRowHeight(sheetId, r, 28));
     r++;
 
-    // Body 6 rows
-    out.push(repeatFormat(sheetId, r, 1, 6, TOTAL_COLS, { backgroundColor: hexToRgb(bg) }));
+    // Body 6 rows — no background, just a framed merged cell
     out.push(merge(sheetId, r, 2, 6, MAIN_COLS));
     out.push(writeCell(sheetId, r, 2, nl_(value || ''), fmt({
-      bg, fontFamily: FONT_BODY, fontSize: 10, color: C.labelGrey,
+      fontFamily: FONT_BODY, fontSize: 10, color: C.labelGrey,
       vAlign: 'TOP', hAlign: 'LEFT', wrap: 'WRAP'
     })));
-    out.push(setBorder(sheetId, r, 2, 1, MAIN_COLS, 'top', 'SOLID'));
-    out.push(setBorder(sheetId, r + 5, 2, 1, MAIN_COLS, 'bottom', 'SOLID'));
+    // Frame the whole 6-row block
+    out.push(setBorder(sheetId, r, 2, 6, MAIN_COLS, 'top,bottom,left,right', 'SOLID'));
     for (let i = 0; i < 6; i++) out.push(setRowHeight(sheetId, r + i, 31));
     r += 6;
   });
@@ -761,12 +775,17 @@ function renderTop10(sheetId, startRow, t10) {
   for (let i = 0; i < rows.length; i++, r++) {
     const item = rows[i] || {};
     const rank = item.rank != null ? Number(item.rank) : (i + 1);
+    const outlineText = bullets_(nl_(item.headerOutline || ''));
     out.push(writeCell(sheetId, r, 1, rank, numFmt));
     out.push(writeCell(sheetId, r, 2, nl_(item.pageTitle || ''), cellFmt));
     out.push(writeLinkCell(sheetId, r, 3, nl_(item.url || ''), item.url, cellFmt));
     out.push(merge(sheetId, r, 4, 1, 4));
-    out.push(writeCell(sheetId, r, 4, bullets_(nl_(item.headerOutline || '')), outlineFmt));
-    out.push(setRowHeight(sheetId, r, 60));
+    out.push(writeCell(sheetId, r, 4, outlineText, outlineFmt));
+
+    // Estimate row height from outline line count so all bullets are visible
+    const lineCount = Math.max(1, (outlineText.match(/\n/g) || []).length + 1);
+    const px = Math.min(800, Math.max(60, lineCount * 16 + 12));
+    out.push(setRowHeight(sheetId, r, px));
   }
 
   out.push(...altFillRequests(sheetId, bodyStart, r - 1, 1, TOTAL_COLS, false));
