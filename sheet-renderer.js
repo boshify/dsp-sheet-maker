@@ -248,8 +248,11 @@ function primeGridRequests(sheetId) {
   const out = widths.map(([col, px]) => setColWidth(sheetId, col, px));
   out.push({
     updateSheetProperties: {
-      properties: { sheetId, gridProperties: { frozenRowCount: 2 } },
-      fields: 'gridProperties.frozenRowCount'
+      properties: {
+        sheetId,
+        gridProperties: { frozenRowCount: 2, hideGridlines: true }
+      },
+      fields: 'gridProperties.frozenRowCount,gridProperties.hideGridlines'
     }
   });
   return out;
