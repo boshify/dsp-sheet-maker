@@ -273,7 +273,7 @@ function renderTitleBar(sheetId, meta) {
 
   // Logo in H1:K2 via IMAGE formula (mode 1 = fit to cell preserving aspect)
   out.push(merge(sheetId, 1, 8, 2, 4));
-  const logoUrl = 'https://cdn-amehi.nitrocdn.com/ldNPGLQtVWaqliEfWebnqecfYajgRCdk/assets/images/optimized/rev-7ef5dc9/www.digitalspotlight.com/wp-content/uploads/2017/09/logo-new.png';
+  const logoUrl = 'https://cdn-amehi.nitrocdn.com/ldNPGLQtVWaqliEfWebnqecfYajgRCdk/assets/images/optimized/rev-12f3605/www.digitalspotlight.com/wp-content/uploads/2017/09/logo-new.png';
   out.push(writeCell(sheetId, 1, 8, `=IMAGE("${logoUrl}", 1)`, fmt({
     bg: C.blue, hAlign: 'CENTER', vAlign: 'MIDDLE'
   })));
