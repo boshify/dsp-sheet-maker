@@ -83,7 +83,7 @@ function parseBoldMarkdownToRuns_(input) {
   const tokenRe = /\*\*([^\n*][\s\S]*?[^\n*]?)\*\*/g;
 
   let plain = '';
-  /** @type {Array<{ startIndex: number, textFormat: { bold: boolean } }>} */
+  /** @type {Array<{ startIndex: number, format: { bold: boolean } }>} */
   const runs = [];
 
   let lastIdx = 0;
@@ -103,8 +103,8 @@ function parseBoldMarkdownToRuns_(input) {
 
     // Add runs for bold. We only need to set bold=true at the start of the span,
     // and bold=false immediately after it to ensure it doesn't "bleed" into later text.
-    runs.push({ startIndex: boldStart, textFormat: { bold: true } });
-    runs.push({ startIndex: boldEnd, textFormat: { bold: false } });
+    runs.push({ startIndex: boldStart, format: { bold: true } });
+    runs.push({ startIndex: boldEnd, format: { bold: false } });
 
     lastIdx = end;
   }
@@ -119,7 +119,7 @@ function parseBoldMarkdownToRuns_(input) {
   // add a "no-op" run to anchor formatting at the beginning.
   runs.sort((a, b) => a.startIndex - b.startIndex);
   if (runs[0].startIndex !== 0) {
-    runs.unshift({ startIndex: 0, textFormat: { bold: false } });
+    runs.unshift({ startIndex: 0, format: { bold: false } });
   }
 
   // De-dupe consecutive runs at the same startIndex (keep last).
