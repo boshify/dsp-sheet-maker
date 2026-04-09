@@ -331,7 +331,7 @@ function resetSheetRequests(sheetId) {
 
 function primeGridRequests(sheetId) {
   const widths = [
-    [1, 33], [2, 184], [3, 70], [4, 370], [5, 184], [6, 70],
+    [1, 33], [2, 184], [3, 200], [4, 370], [5, 184], [6, 70],
     [7, 70], [8, 218], [9, 184], [10, 80], [11, 80]
   ];
   const out = widths.map(([col, px]) => setColWidth(sheetId, col, px));
@@ -493,6 +493,14 @@ function renderContentOutline(sheetId, startRow, items) {
     out.push(checkboxRule(sheetId, r, 10, 1, 2));
     out.push(writeCell(sheetId, r, 10, w, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
     out.push(writeCell(sheetId, r, 11, e, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
+
+    // Dynamic row height based on longest cell content (writer instructions is typically longest)
+    const longestText = [writer, reqElem, entities, heading].reduce((a, b) => a.length > b.length ? a : b, '');
+    const lineCount = Math.max(1, (longestText.match(/\n/g) || []).length + 1);
+    const estCharsPerLine = 50; // col D (Writer Instructions) is ~370px wide
+    const wrapLines = Math.ceil(longestText.length / (estCharsPerLine * lineCount)) * lineCount;
+    const px = Math.min(800, Math.max(40, Math.max(lineCount, wrapLines) * 16 + 12));
+    out.push(setRowHeight(sheetId, r, px));
   }
 
   // Alternate fill across A..K for body
