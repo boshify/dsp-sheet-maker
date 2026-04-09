@@ -51,17 +51,83 @@ function nl_(v) {
   if (typeof v !== 'string') return String(v);
   return v.replace(/\\n\\n/g, '\n\n').replace(/\\n/g, '\n');
 }
-function bullets_(v) {
+function normalizeBullets_(v) {
   if (v == null) return '';
   if (typeof v !== 'string') return String(v);
   const lines = v.split('\n');
-  const re = /^\s*[•\-—\*]\s*/;
-  const has = lines.some(l => re.test(l));
-  return lines.map(l => {
-    if (!l.trim()) return l;
-    if (re.test(l)) return l.replace(re, '• ');
-    return has ? l : '• ' + l;
-  }).join('\n');
+  const bulletLine = /^\s*[•\-—\*]\s+/;
+  return lines
+    .map(l => {
+      if (!l.trim()) return l;
+      if (bulletLine.test(l)) return l.replace(bulletLine, '• ');
+      return l;
+    })
+    .join('\n');
+}
+
+/**
+ * Parse markdown-like bold markers (**bold**) into:
+ * - plainText: text with markers removed
+ * - runs: Sheets API `textFormatRuns` that bold the bold spans
+ *
+ * Notes:
+ * - Only supports bold (not italics/underline).
+ * - If no valid bold spans exist, returns { plainText: original, runs: null }.
+ */
+function parseBoldMarkdownToRuns_(input) {
+  const text = input == null ? '' : String(input);
+  if (!text.includes('**')) return { plainText: text, runs: null };
+
+  // We intentionally keep this conservative: pairs of **...** that do not cross newlines.
+  // This avoids surprising formatting in long, complex blocks.
+  const tokenRe = /\*\*([^\n*][\s\S]*?[^\n*]?)\*\*/g;
+
+  let plain = '';
+  /** @type {Array<{ startIndex: number, textFormat: { bold: boolean } }>} */
+  const runs = [];
+
+  let lastIdx = 0;
+  let match;
+  while ((match = tokenRe.exec(text)) !== null) {
+    const [full, inner] = match;
+    const start = match.index;
+    const end = start + full.length;
+
+    // Append the non-bold prefix.
+    if (start > lastIdx) plain += text.slice(lastIdx, start);
+
+    // Bold span starts at current plain length.
+    const boldStart = plain.length;
+    plain += inner;
+    const boldEnd = plain.length;
+
+    // Add runs for bold. We only need to set bold=true at the start of the span,
+    // and bold=false immediately after it to ensure it doesn't "bleed" into later text.
+    runs.push({ startIndex: boldStart, textFormat: { bold: true } });
+    runs.push({ startIndex: boldEnd, textFormat: { bold: false } });
+
+    lastIdx = end;
+  }
+
+  // Append remainder.
+  if (lastIdx < text.length) plain += text.slice(lastIdx);
+
+  // If no matches, don’t change anything.
+  if (!runs.length) return { plainText: text, runs: null };
+
+  // Sheets requires the first run to start at 0. If our first run doesn't,
+  // add a "no-op" run to anchor formatting at the beginning.
+  runs.sort((a, b) => a.startIndex - b.startIndex);
+  if (runs[0].startIndex !== 0) {
+    runs.unshift({ startIndex: 0, textFormat: { bold: false } });
+  }
+
+  // De-dupe consecutive runs at the same startIndex (keep last).
+  for (let i = runs.length - 2; i >= 0; i--) {
+    if (runs[i].startIndex === runs[i + 1].startIndex) runs.splice(i, 1);
+  }
+
+  return { plainText: plain, runs };
 }
 function toBool_(v) {
   if (typeof v === 'boolean') return v;
@@ -147,7 +213,30 @@ function writeCell(sheetId, row, col, value, format) {
   if (typeof value === 'number') uv.numberValue = value;
   else if (typeof value === 'boolean') uv.boolValue = value;
   else if (typeof value === 'string' && value.startsWith('=')) uv.formulaValue = value;
-  else uv.stringValue = value == null ? '' : String(value);
+  else {
+    const raw = value == null ? '' : String(value);
+    // Preserve newline + allow markdown-like bold to become rich text.
+    const parsed = parseBoldMarkdownToRuns_(raw);
+    uv.stringValue = parsed.plainText;
+
+    const cell = { userEnteredValue: uv };
+    let fields = 'userEnteredValue';
+    if (format) {
+      cell.userEnteredFormat = format;
+      fields += ',userEnteredFormat';
+    }
+    if (parsed.runs) {
+      cell.textFormatRuns = parsed.runs;
+      fields += ',textFormatRuns';
+    }
+    return {
+      updateCells: {
+        range: gridRange(sheetId, row, col, 1, 1),
+        rows: [{ values: [cell] }],
+        fields
+      }
+    };
+  }
 
   const cell = { userEnteredValue: uv };
   let fields = 'userEnteredValue';
@@ -382,11 +471,11 @@ function renderContentOutline(sheetId, startRow, items) {
     const it = rows[i] || {};
     const section  = nl_(get_(it, 'Section', 'section'));
     const heading  = nl_(get_(it, 'Heading', 'heading'));
-    const writer   = bullets_(nl_(get_(it, 'Writer Instructions', 'writerInstructions', 'reqs')));
+    const writer   = normalizeBullets_(nl_(get_(it, 'Writer Instructions', 'writerInstructions', 'reqs')));
     const type     = nl_(get_(it, 'Type', 'type'));
     const capsule  = nl_(get_(it, 'Capsule?', 'capsule'));
     const wordT    = nl_(get_(it, 'Word Target', 'wordTarget'));
-    const reqElem  = bullets_(nl_(get_(it, 'Required Elements', 'requiredElements')));
+    const reqElem  = normalizeBullets_(nl_(get_(it, 'Required Elements', 'requiredElements')));
     const entities = nl_(get_(it, 'Entities / Terms', 'entities'));
     const w        = toBool_(get_(it, 'WRITER ✓', 'writer'));
     const e        = toBool_(get_(it, 'EDITOR ✓', 'editor'));
@@ -439,9 +528,9 @@ function renderTrustBenefits(sheetId, startRow, trust, benefits, pain) {
     vAlign: 'TOP', hAlign: 'LEFT', wrap: 'WRAP'
   });
   const bodyDefs = [
-    [2, bullets_(nl_(trust || ''))],
-    [4, bullets_(nl_(benefits || ''))],
-    [6, bullets_(nl_(pain || ''))]
+    [2, normalizeBullets_(nl_(trust || ''))],
+    [4, normalizeBullets_(nl_(benefits || ''))],
+    [6, normalizeBullets_(nl_(pain || ''))]
   ];
   bodyDefs.forEach(([col, val]) => {
     out.push(merge(sheetId, r, col, 6, 2));
@@ -778,7 +867,7 @@ function renderTop10(sheetId, startRow, t10) {
   for (let i = 0; i < rows.length; i++, r++) {
     const item = rows[i] || {};
     const rank = item.rank != null ? Number(item.rank) : (i + 1);
-    const outlineText = bullets_(nl_(item.headerOutline || ''));
+    const outlineText = normalizeBullets_(nl_(item.headerOutline || ''));
     out.push(writeCell(sheetId, r, 1, rank, numFmt));
     out.push(writeCell(sheetId, r, 2, nl_(item.pageTitle || ''), cellFmt));
     out.push(writeLinkCell(sheetId, r, 3, nl_(item.url || ''), item.url, cellFmt));
