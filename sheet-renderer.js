@@ -115,19 +115,29 @@ function parseBoldMarkdownToRuns_(input) {
   // If no matches, don’t change anything.
   if (!runs.length) return { plainText: text, runs: null };
 
+  // Drop runs whose startIndex is at or past the end of the final string.
+  // Sheets requires every run's startIndex to be strictly less than string length.
+  const maxIdx = plain.length;
+  let filtered = runs.filter(r => r.startIndex < maxIdx);
+
   // Sheets requires the first run to start at 0. If our first run doesn't,
   // add a "no-op" run to anchor formatting at the beginning.
-  runs.sort((a, b) => a.startIndex - b.startIndex);
-  if (runs[0].startIndex !== 0) {
-    runs.unshift({ startIndex: 0, format: { bold: false } });
+  filtered.sort((a, b) => a.startIndex - b.startIndex);
+  if (!filtered.length || filtered[0].startIndex !== 0) {
+    filtered.unshift({ startIndex: 0, format: { bold: false } });
   }
 
   // De-dupe consecutive runs at the same startIndex (keep last).
-  for (let i = runs.length - 2; i >= 0; i--) {
-    if (runs[i].startIndex === runs[i + 1].startIndex) runs.splice(i, 1);
+  for (let i = filtered.length - 2; i >= 0; i--) {
+    if (filtered[i].startIndex === filtered[i + 1].startIndex) filtered.splice(i, 1);
   }
 
-  return { plainText: plain, runs };
+  // If after filtering we only have the anchor run with no meaningful formatting, skip.
+  if (filtered.length === 1 && filtered[0].startIndex === 0 && filtered[0].format.bold === false) {
+    return { plainText: plain, runs: null };
+  }
+
+  return { plainText: plain, runs: filtered };
 }
 function toBool_(v) {
   if (typeof v === 'boolean') return v;
