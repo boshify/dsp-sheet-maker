@@ -350,7 +350,7 @@ function resetSheetRequests(sheetId) {
 
 function primeGridRequests(sheetId) {
   const widths = [
-    [1, 33], [2, 184], [3, 200], [4, 370], [5, 120], [6, 70],
+    [1, 33], [2, 184], [3, 200], [4, 370], [5, 198], [6, 70],
     [7, 218], [8, 184], [9, 80], [10, 80], [11, 33]
   ];
   const out = widths.map(([col, px]) => setColWidth(sheetId, col, px));
