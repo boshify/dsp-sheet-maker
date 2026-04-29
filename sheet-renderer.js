@@ -341,8 +341,8 @@ function resetSheetRequests(sheetId) {
 
 function primeGridRequests(sheetId) {
   const widths = [
-    [1, 33], [2, 184], [3, 200], [4, 370], [5, 184], [6, 70],
-    [7, 70], [8, 218], [9, 184], [10, 80], [11, 80]
+    [1, 33], [2, 184], [3, 200], [4, 370], [5, 70], [6, 70],
+    [7, 218], [8, 184], [9, 80], [10, 80], [11, 33]
   ];
   const out = widths.map(([col, px]) => setColWidth(sheetId, col, px));
   out.push({
@@ -386,9 +386,16 @@ function renderTitleBar(sheetId, meta) {
 }
 
 /** Overview — 3 rows, labels in B/E, values in C/F, alt bg rows. */
-function renderOverview(sheetId, startRow, meta) {
+function renderOverview(sheetId, startRow, meta, contentOutlineCount = 0) {
   const out = [];
   const r = startRow;
+  // Content Outline body sits at a fixed offset below this section:
+  //   overview is 3 rows + 1 spacer, then blue header (2) + table header (1).
+  const outlineBodyStart = startRow + 7;
+  const outlineBodyEnd = outlineBodyStart + Math.max(0, contentOutlineCount - 1);
+  const wordCountValue = contentOutlineCount > 0
+    ? `=SUM(F${outlineBodyStart}:F${outlineBodyEnd})`
+    : (meta.minWordCount || '');
   const labels = [
     ['MAIN KEYWORD:', 'KEYWORD VOLUME:'],
     ['RECOMMENDED URL:', 'TARGET WORD COUNT:'],
@@ -396,7 +403,7 @@ function renderOverview(sheetId, startRow, meta) {
   ];
   const values = [
     [meta.mainKeyword || '', meta.keywordVolume || ''],
-    [meta.recommendedUrl || '', meta.minWordCount || ''],
+    [meta.recommendedUrl || '', wordCountValue],
     [meta.existingOrNew || '', meta.contentType || meta.pageType || '']
   ];
 
@@ -447,7 +454,7 @@ function renderBlueHeaderSmall(sheetId, row, text) {
   return { requests: out, nextRow: row + 1 };
 }
 
-/** Content Outline — blue header, grey column headers, 10 data columns. */
+/** Content Outline — blue header, grey column headers, 9 data columns. */
 function renderContentOutline(sheetId, startRow, items) {
   const out = [];
   const bh = renderBlueHeader(sheetId, startRow, 'Content Outline');
@@ -455,7 +462,7 @@ function renderContentOutline(sheetId, startRow, items) {
   let r = bh.nextRow;
 
   // Header row
-  const headers = ['Section', 'Heading', 'Writer Instructions', 'Type', 'Capsule?',
+  const headers = ['Section', 'Heading', 'Writer Instructions', 'Capsule?',
                    'Word Target', 'Required Elements', 'Entities / Terms', 'WRITER ✓', 'EDITOR ✓'];
   out.push(repeatFormat(sheetId, r, 1, 1, TOTAL_COLS, { backgroundColor: hexToRgb(C.greyHdr) }));
   const hdrFmt = fmt({
@@ -482,7 +489,6 @@ function renderContentOutline(sheetId, startRow, items) {
     const section  = nl_(get_(it, 'Section', 'section'));
     const heading  = nl_(get_(it, 'Heading', 'heading'));
     const writer   = normalizeBullets_(nl_(get_(it, 'Writer Instructions', 'writerInstructions', 'reqs')));
-    const type     = nl_(get_(it, 'Type', 'type'));
     const capsule  = nl_(get_(it, 'Capsule?', 'capsule'));
     const wordT    = nl_(get_(it, 'Word Target', 'wordTarget'));
     const reqElem  = normalizeBullets_(nl_(get_(it, 'Required Elements', 'requiredElements')));
@@ -493,16 +499,15 @@ function renderContentOutline(sheetId, startRow, items) {
     out.push(writeCell(sheetId, r, 2, section, fmt({ ...bodyFmtBase, bold: true, hAlign: 'CENTER' })));
     out.push(writeCell(sheetId, r, 3, heading, fmt({ ...bodyFmtBase, hAlign: 'LEFT' })));
     out.push(writeCell(sheetId, r, 4, writer, fmt({ ...bodyFmtBase, hAlign: 'LEFT' })));
-    out.push(writeCell(sheetId, r, 5, type, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
-    out.push(writeCell(sheetId, r, 6, capsule, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
-    out.push(writeCell(sheetId, r, 7, wordT, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
-    out.push(writeCell(sheetId, r, 8, reqElem, fmt({ ...bodyFmtBase, hAlign: 'LEFT' })));
-    out.push(writeCell(sheetId, r, 9, entities, fmt({ ...bodyFmtBase, hAlign: 'LEFT' })));
+    out.push(writeCell(sheetId, r, 5, capsule, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
+    out.push(writeCell(sheetId, r, 6, wordT, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
+    out.push(writeCell(sheetId, r, 7, reqElem, fmt({ ...bodyFmtBase, hAlign: 'LEFT' })));
+    out.push(writeCell(sheetId, r, 8, entities, fmt({ ...bodyFmtBase, hAlign: 'LEFT' })));
 
     // Checkboxes
-    out.push(checkboxRule(sheetId, r, 10, 1, 2));
-    out.push(writeCell(sheetId, r, 10, w, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
-    out.push(writeCell(sheetId, r, 11, e, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
+    out.push(checkboxRule(sheetId, r, 9, 1, 2));
+    out.push(writeCell(sheetId, r, 9, w, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
+    out.push(writeCell(sheetId, r, 10, e, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
 
     // Dynamic row height based on longest cell content (writer instructions is typically longest)
     const longestText = [writer, reqElem, entities, heading].reduce((a, b) => a.length > b.length ? a : b, '');
@@ -927,7 +932,8 @@ function buildBriefRequests(sheetId, job) {
   let section;
 
   section = renderTitleBar(sheetId, meta);     all.push(...section.requests); row = section.nextRow;
-  section = renderOverview(sheetId, row, meta); all.push(...section.requests); row = section.nextRow;
+  section = renderOverview(sheetId, row, meta, (tables.contentOutline || []).length);
+    all.push(...section.requests); row = section.nextRow;
   section = renderContentOutline(sheetId, row, tables.contentOutline || []);
     all.push(...section.requests); row = section.nextRow;
   section = renderTrustBenefits(sheetId, row, tables.trustElements, tables.benefitsCta, tables.painPoints);
