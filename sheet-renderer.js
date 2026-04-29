@@ -350,7 +350,7 @@ function resetSheetRequests(sheetId) {
 
 function primeGridRequests(sheetId) {
   const widths = [
-    [1, 33], [2, 184], [3, 200], [4, 370], [5, 198], [6, 70],
+    [1, 33], [2, 184], [3, 279], [4, 370], [5, 198], [6, 106],
     [7, 218], [8, 184], [9, 80], [10, 80], [11, 33]
   ];
   const out = widths.map(([col, px]) => setColWidth(sheetId, col, px));
@@ -418,7 +418,7 @@ function renderOverview(sheetId, startRow, meta, contentOutlineCount = 0) {
 
   // No row backgrounds — overview is not considered a table
   const labelFmt = fmt({ fontFamily: FONT_BODY, fontSize: 12, bold: true, color: C.labelGrey, vAlign: 'MIDDLE' });
-  const valueFmt = fmt({ fontFamily: FONT_BODY, fontSize: 12, color: C.textDark, vAlign: 'MIDDLE' });
+  const valueFmt = fmt({ fontFamily: FONT_BODY, fontSize: 12, color: C.textDark, hAlign: 'RIGHT', vAlign: 'MIDDLE' });
 
   for (let i = 0; i < 3; i++) {
     out.push(writeCell(sheetId, r + i, 2, labels[i][0], labelFmt));
@@ -559,16 +559,34 @@ function renderTrustBenefits(sheetId, startRow, trust, benefits, pain) {
     bg: C.white, fontFamily: FONT_BODY, fontSize: 10, color: C.labelGrey,
     vAlign: 'TOP', hAlign: 'LEFT', wrap: 'WRAP'
   });
+  // Each block is a 2-col merge. Approximate chars-per-line at fontSize 10
+  // for each merged width — used to size row heights so the full text shows.
   const bodyDefs = [
-    [2, normalizeBullets_(nl_(trust || ''))],
-    [4, normalizeBullets_(nl_(benefits || ''))],
-    [6, normalizeBullets_(nl_(pain || ''))]
+    { col: 2, val: normalizeBullets_(nl_(trust || '')),    chars: 71 }, // B+C ≈ 463px
+    { col: 4, val: normalizeBullets_(nl_(benefits || '')), chars: 87 }, // D+E ≈ 568px
+    { col: 6, val: normalizeBullets_(nl_(pain || '')),     chars: 50 }  // F+G ≈ 324px
   ];
-  bodyDefs.forEach(([col, val]) => {
+  bodyDefs.forEach(({ col, val }) => {
     out.push(merge(sheetId, r, col, 6, 2));
     out.push(writeCell(sheetId, r, col, val, bodyFmt));
   });
-  for (let i = 0; i < 6; i++) out.push(setRowHeight(sheetId, r + i, 35));
+
+  // Compute total wrapped-line count for each block, take the max, distribute
+  // across the 6 merged rows so the tallest block has enough height.
+  const lineCounts = bodyDefs.map(({ val, chars }) => {
+    if (!val) return 1;
+    let total = 0;
+    for (const line of val.split('\n')) {
+      total += Math.max(1, Math.ceil(line.length / chars));
+    }
+    return total;
+  });
+  const maxLines = Math.max(1, ...lineCounts);
+  const lineHeightPx = 14;
+  const minTotal = 6 * 35;
+  const totalHeight = Math.max(minTotal, maxLines * lineHeightPx + 16);
+  const perRow = Math.ceil(totalHeight / 6);
+  for (let i = 0; i < 6; i++) out.push(setRowHeight(sheetId, r + i, perRow));
 
   // Thin outer border around each of the 3 box column groups
   // (label row + 6 body rows). The label row is at r - 1 since we've
