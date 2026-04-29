@@ -65,6 +65,44 @@ function normalizeBullets_(v) {
     .join('\n');
 }
 
+// Translate the markdown subset that AI-generated copy tends to leak into
+// Sheets: headings (#, ##, ###) become **bold** (picked up by the existing
+// bold-runs parser), horizontal rules collapse to a blank line, and "broken"
+// numbered lists (every item prefixed with "1." / "2." / etc.) lose the
+// numbering since Sheets has no list semantics.
+function normalizeMarkdownText_(v) {
+  if (v == null) return '';
+  if (typeof v !== 'string') return String(v);
+
+  const lines = v.split('\n');
+  const result = [];
+
+  for (const ln of lines) {
+    const trimmed = ln.trim();
+
+    if (/^[-*_]{3,}$/.test(trimmed)) {
+      result.push('');
+      continue;
+    }
+
+    const heading = ln.match(/^(\s*)#{1,6}\s+(.*)$/);
+    if (heading) {
+      result.push(`${heading[1]}**${heading[2].trim()}**`);
+      continue;
+    }
+
+    const numbered = ln.match(/^(\s*)\d+\.\s+(.*)$/);
+    if (numbered) {
+      result.push(`${numbered[1]}${numbered[2]}`);
+      continue;
+    }
+
+    result.push(ln);
+  }
+
+  return result.join('\n').replace(/\n{3,}/g, '\n\n');
+}
+
 // Strip everything but the first run of digits. Handles "'55", "55 words",
 // "130 w", "--" (returns empty), null/undefined, and number values.
 function parseWordTarget_(v) {
@@ -561,10 +599,11 @@ function renderTrustBenefits(sheetId, startRow, trust, benefits, pain) {
   });
   // Each block is a 2-col merge. Approximate chars-per-line at fontSize 10
   // for each merged width — used to size row heights so the full text shows.
+  const cleanForBlock = (v) => normalizeBullets_(normalizeMarkdownText_(nl_(v || '')));
   const bodyDefs = [
-    { col: 2, val: normalizeBullets_(nl_(trust || '')),    chars: 71 }, // B+C ≈ 463px
-    { col: 4, val: normalizeBullets_(nl_(benefits || '')), chars: 87 }, // D+E ≈ 568px
-    { col: 6, val: normalizeBullets_(nl_(pain || '')),     chars: 50 }  // F+G ≈ 324px
+    { col: 2, val: cleanForBlock(trust),    chars: 71 }, // B+C ≈ 463px
+    { col: 4, val: cleanForBlock(benefits), chars: 87 }, // D+E ≈ 568px
+    { col: 6, val: cleanForBlock(pain),     chars: 50 }  // F+G ≈ 324px
   ];
   bodyDefs.forEach(({ col, val }) => {
     out.push(merge(sheetId, r, col, 6, 2));
