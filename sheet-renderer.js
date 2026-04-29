@@ -65,6 +65,15 @@ function normalizeBullets_(v) {
     .join('\n');
 }
 
+// Strip everything but the first run of digits. Handles "'55", "55 words",
+// "130 w", "--" (returns empty), null/undefined, and number values.
+function parseWordTarget_(v) {
+  if (v == null || v === '') return '';
+  if (typeof v === 'number') return Number.isFinite(v) ? v : '';
+  const m = String(v).match(/\d+/);
+  return m ? Number(m[0]) : '';
+}
+
 /**
  * Parse markdown-like bold markers (**bold**) into:
  * - plainText: text with markers removed
@@ -341,7 +350,7 @@ function resetSheetRequests(sheetId) {
 
 function primeGridRequests(sheetId) {
   const widths = [
-    [1, 33], [2, 184], [3, 200], [4, 370], [5, 70], [6, 70],
+    [1, 33], [2, 184], [3, 200], [4, 370], [5, 120], [6, 70],
     [7, 218], [8, 184], [9, 80], [10, 80], [11, 33]
   ];
   const out = widths.map(([col, px]) => setColWidth(sheetId, col, px));
@@ -394,7 +403,7 @@ function renderOverview(sheetId, startRow, meta, contentOutlineCount = 0) {
   const outlineBodyStart = startRow + 7;
   const outlineBodyEnd = outlineBodyStart + Math.max(0, contentOutlineCount - 1);
   const wordCountValue = contentOutlineCount > 0
-    ? `=SUM(F${outlineBodyStart}:F${outlineBodyEnd})`
+    ? `=SUMPRODUCT(ARRAYFORMULA(IFERROR(VALUE(REGEXEXTRACT(F${outlineBodyStart}:F${outlineBodyEnd}&"","[0-9]+")),0)))`
     : (meta.minWordCount || '');
   const labels = [
     ['MAIN KEYWORD:', 'KEYWORD VOLUME:'],
@@ -490,7 +499,7 @@ function renderContentOutline(sheetId, startRow, items) {
     const heading  = nl_(get_(it, 'Heading', 'heading'));
     const writer   = normalizeBullets_(nl_(get_(it, 'Writer Instructions', 'writerInstructions', 'reqs')));
     const capsule  = nl_(get_(it, 'Capsule?', 'capsule'));
-    const wordT    = nl_(get_(it, 'Word Target', 'wordTarget'));
+    const wordT    = parseWordTarget_(get_(it, 'Word Target', 'wordTarget'));
     const reqElem  = normalizeBullets_(nl_(get_(it, 'Required Elements', 'requiredElements')));
     const entities = nl_(get_(it, 'Entities / Terms', 'entities'));
     const w        = toBool_(get_(it, 'WRITER ✓', 'writer'));
