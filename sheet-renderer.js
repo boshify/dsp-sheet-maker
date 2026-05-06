@@ -31,8 +31,8 @@ const C = {
   link:       '#0000FF',
   black:      '#000000'
 };
-const TOTAL_COLS = 11;   // A..K
-const OUTLINE_COLS = 10; // B..K
+const TOTAL_COLS = 9;    // A..I
+const OUTLINE_COLS = 8;  // B..I
 const MAIN_COLS = 6;     // B..G
 const FONT_SECTION = 'Lexend';
 const FONT_BODY = 'Arial';
@@ -389,7 +389,7 @@ function resetSheetRequests(sheetId) {
 function primeGridRequests(sheetId) {
   const widths = [
     [1, 33], [2, 184], [3, 279], [4, 370], [5, 198], [6, 154],
-    [7, 176], [8, 80], [9, 80], [10, 80], [11, 33]
+    [7, 176], [8, 80], [9, 33]
   ];
   const out = widths.map(([col, px]) => setColWidth(sheetId, col, px));
   out.push({
@@ -406,24 +406,24 @@ function primeGridRequests(sheetId) {
 
 /* ============================== RENDERERS ============================== */
 
-/** Title bar rows 1–2 — A1:K2 blue, B1:G2 merged title, logo via =IMAGE() in H1:K2. */
+/** Title bar rows 1–2 — A1:I2 blue, B1:F2 merged title, logo via =IMAGE() in G1:I2. */
 function renderTitleBar(sheetId, meta) {
   const out = [];
-  // Blue bg A1:K2
+  // Blue bg A1:I2
   out.push(repeatFormat(sheetId, 1, 1, 2, TOTAL_COLS, { backgroundColor: hexToRgb(C.blue) }));
 
-  // Merge title B1:G2
-  out.push(merge(sheetId, 1, 2, 2, MAIN_COLS));
+  // Merge title B1:F2 (5 cols)
+  out.push(merge(sheetId, 1, 2, 2, 5));
   const home = (meta && meta.homeUrl) ? String(meta.homeUrl).replace(/^https?:\/\//i, '') : '';
   out.push(writeCell(sheetId, 1, 2, 'Content Brief: ' + home, fmt({
     bg: C.blue, fontFamily: FONT_SECTION, fontSize: 24, bold: true, color: C.white,
     hAlign: 'LEFT', vAlign: 'MIDDLE'
   })));
 
-  // Logo in H1:K2 via IMAGE formula (mode 1 = fit to cell preserving aspect)
-  out.push(merge(sheetId, 1, 8, 2, 4));
+  // Logo in G1:I2 via IMAGE formula (mode 1 = fit to cell preserving aspect)
+  out.push(merge(sheetId, 1, 7, 2, 3));
   const logoUrl = 'https://cdn-amehi.nitrocdn.com/ldNPGLQtVWaqliEfWebnqecfYajgRCdk/assets/images/optimized/rev-12f3605/www.digitalspotlight.com/wp-content/uploads/2017/09/logo-new.png';
-  out.push(writeCell(sheetId, 1, 8, `=IMAGE("${logoUrl}", 1)`, fmt({
+  out.push(writeCell(sheetId, 1, 7, `=IMAGE("${logoUrl}", 1)`, fmt({
     bg: C.blue, hAlign: 'CENTER', vAlign: 'MIDDLE'
   })));
 
