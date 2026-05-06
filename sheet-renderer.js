@@ -388,8 +388,8 @@ function resetSheetRequests(sheetId) {
 
 function primeGridRequests(sheetId) {
   const widths = [
-    [1, 33], [2, 184], [3, 279], [4, 370], [5, 198], [6, 106],
-    [7, 80], [8, 80], [9, 80], [10, 80], [11, 33]
+    [1, 33], [2, 184], [3, 279], [4, 370], [5, 198], [6, 154],
+    [7, 176], [8, 80], [9, 80], [10, 80], [11, 33]
   ];
   const out = widths.map(([col, px]) => setColWidth(sheetId, col, px));
   out.push({
@@ -599,7 +599,7 @@ function renderTrustBenefits(sheetId, startRow, trust, benefits, pain) {
   const bodyDefs = [
     { col: 2, val: cleanForBlock(trust),    chars: 71 }, // B+C ≈ 463px
     { col: 4, val: cleanForBlock(benefits), chars: 87 }, // D+E ≈ 568px
-    { col: 6, val: cleanForBlock(pain),     chars: 28 }  // F+G ≈ 186px
+    { col: 6, val: cleanForBlock(pain),     chars: 50 }  // F+G ≈ 330px
   ];
   bodyDefs.forEach(({ col, val }) => {
     out.push(merge(sheetId, r, col, 6, 2));
