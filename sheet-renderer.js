@@ -389,7 +389,7 @@ function resetSheetRequests(sheetId) {
 function primeGridRequests(sheetId) {
   const widths = [
     [1, 33], [2, 184], [3, 279], [4, 370], [5, 198], [6, 106],
-    [7, 218], [8, 184], [9, 80], [10, 80], [11, 33]
+    [7, 80], [8, 80], [9, 80], [10, 80], [11, 33]
   ];
   const out = widths.map(([col, px]) => setColWidth(sheetId, col, px));
   out.push({
@@ -501,7 +501,7 @@ function renderBlueHeaderSmall(sheetId, row, text) {
   return { requests: out, nextRow: row + 1 };
 }
 
-/** Content Outline — blue header, grey column headers, 9 data columns. */
+/** Content Outline — blue header, grey column headers, 7 data columns. */
 function renderContentOutline(sheetId, startRow, items) {
   const out = [];
   const bh = renderBlueHeader(sheetId, startRow, 'Content Outline');
@@ -510,7 +510,7 @@ function renderContentOutline(sheetId, startRow, items) {
 
   // Header row
   const headers = ['Section', 'Heading', 'Writer Instructions', 'Capsule?',
-                   'Word Target', 'Required Elements', 'Entities / Terms', 'WRITER ✓', 'EDITOR ✓'];
+                   'Word Target', 'WRITER ✓', 'EDITOR ✓'];
   out.push(repeatFormat(sheetId, r, 1, 1, TOTAL_COLS, { backgroundColor: hexToRgb(C.greyHdr) }));
   const hdrFmt = fmt({
     bg: C.greyHdr, fontFamily: FONT_BODY, fontSize: 11, bold: true, color: C.labelGrey,
@@ -538,8 +538,6 @@ function renderContentOutline(sheetId, startRow, items) {
     const writer   = normalizeBullets_(nl_(get_(it, 'Writer Instructions', 'writerInstructions', 'reqs')));
     const capsule  = nl_(get_(it, 'Capsule?', 'capsule'));
     const wordT    = parseWordTarget_(get_(it, 'Word Target', 'wordTarget'));
-    const reqElem  = normalizeBullets_(nl_(get_(it, 'Required Elements', 'requiredElements')));
-    const entities = nl_(get_(it, 'Entities / Terms', 'entities'));
     const w        = toBool_(get_(it, 'WRITER ✓', 'writer'));
     const e        = toBool_(get_(it, 'EDITOR ✓', 'editor'));
 
@@ -548,16 +546,14 @@ function renderContentOutline(sheetId, startRow, items) {
     out.push(writeCell(sheetId, r, 4, writer, fmt({ ...bodyFmtBase, hAlign: 'LEFT' })));
     out.push(writeCell(sheetId, r, 5, capsule, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
     out.push(writeCell(sheetId, r, 6, wordT, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
-    out.push(writeCell(sheetId, r, 7, reqElem, fmt({ ...bodyFmtBase, hAlign: 'LEFT' })));
-    out.push(writeCell(sheetId, r, 8, entities, fmt({ ...bodyFmtBase, hAlign: 'LEFT' })));
 
     // Checkboxes
-    out.push(checkboxRule(sheetId, r, 9, 1, 2));
-    out.push(writeCell(sheetId, r, 9, w, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
-    out.push(writeCell(sheetId, r, 10, e, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
+    out.push(checkboxRule(sheetId, r, 7, 1, 2));
+    out.push(writeCell(sheetId, r, 7, w, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
+    out.push(writeCell(sheetId, r, 8, e, fmt({ ...bodyFmtBase, hAlign: 'CENTER' })));
 
     // Dynamic row height based on longest cell content (writer instructions is typically longest)
-    const longestText = [writer, reqElem, entities, heading].reduce((a, b) => a.length > b.length ? a : b, '');
+    const longestText = [writer, heading].reduce((a, b) => a.length > b.length ? a : b, '');
     const lineCount = Math.max(1, (longestText.match(/\n/g) || []).length + 1);
     const estCharsPerLine = 50; // col D (Writer Instructions) is ~370px wide
     const wrapLines = Math.ceil(longestText.length / (estCharsPerLine * lineCount)) * lineCount;
@@ -603,7 +599,7 @@ function renderTrustBenefits(sheetId, startRow, trust, benefits, pain) {
   const bodyDefs = [
     { col: 2, val: cleanForBlock(trust),    chars: 71 }, // B+C ≈ 463px
     { col: 4, val: cleanForBlock(benefits), chars: 87 }, // D+E ≈ 568px
-    { col: 6, val: cleanForBlock(pain),     chars: 50 }  // F+G ≈ 324px
+    { col: 6, val: cleanForBlock(pain),     chars: 28 }  // F+G ≈ 186px
   ];
   bodyDefs.forEach(({ col, val }) => {
     out.push(merge(sheetId, r, col, 6, 2));
