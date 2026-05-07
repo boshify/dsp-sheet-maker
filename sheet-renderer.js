@@ -509,7 +509,7 @@ function renderContentOutline(sheetId, startRow, items) {
   let r = bh.nextRow;
 
   // Header row
-  const headers = ['Section', 'Heading', 'Writer Instructions', 'Capsule?',
+  const headers = ['Section', 'Heading', 'What To Cover', 'Capsule?',
                    'Word Target', 'WRITER ✓', 'EDITOR ✓'];
   out.push(repeatFormat(sheetId, r, 1, 1, TOTAL_COLS, { backgroundColor: hexToRgb(C.greyHdr) }));
   const hdrFmt = fmt({
