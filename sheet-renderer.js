@@ -827,7 +827,7 @@ function renderNotes(sheetId, startRow, notes) {
 }
 
 /** QA Checklist. */
-function renderQA(sheetId, startRow, meta = {}) {
+function renderQA(sheetId, startRow) {
   const out = [];
   let r = startRow;
 
@@ -851,14 +851,11 @@ function renderQA(sheetId, startRow, meta = {}) {
 
   // Row 1
   out.push(writeCell(sheetId, r, 2, 'Article Link', qaLabel));
-  out.push(writeLinkCell(sheetId, r, 3, meta.clearScopeLink || '', meta.clearScopeLink, fmt({
-    fontFamily: FONT_BODY, fontSize: 11, color: C.link, vAlign: 'MIDDLE', wrap: 'WRAP'
-  })));
   out.push(writeCell(sheetId, r, 4, 'Plagiarism Score\n(via Grammarly)', fmt({
     fontFamily: FONT_BODY, fontSize: 11, color: C.csLabel, hAlign: 'CENTER', vAlign: 'MIDDLE', wrap: 'WRAP'
   })));
   out.push(writeCell(sheetId, r, 7, 'Should not be more than 2%', qaNote));
-  out.push(setRowHeight(sheetId, r, 45));
+  out.push(setRowHeight(sheetId, r, 31));
   r++;
 
   // Row 2
@@ -1008,7 +1005,7 @@ function buildBriefRequests(sheetId, job) {
     all.push(...section.requests); row = section.nextRow;
   section = renderNotes(sheetId, row, notes);
     all.push(...section.requests); row = section.nextRow;
-  section = renderQA(sheetId, row, meta);
+  section = renderQA(sheetId, row);
     all.push(...section.requests); row = section.nextRow;
   section = renderResearchAndQuestions(sheetId, row, tables.questions || []);
     all.push(...section.requests); row = section.nextRow;
